@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+  <head>
+    <title>RGV</title>
+    <link rel='stylesheet' href='/stylesheets/style.css' />
+    <link rel="stylesheet" type="text/css" href="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css">
+    <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.0.3.min.js"></script>
+    <script type="text/javascript" charset="utf8" src="http://ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/jquery.dataTables.min.js"></script>
+    <script src="/javascripts/d3.v3.js "></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/javascripts/fdgraph2.js"></script>
+  </head>
+  
+  <body>
+    <div id="top">
+      <h3><i>MPSA monitor</i></h3>
+    </div>
+    <div id="center">
+      <div id="graph"></div>
+      <div id="log">
+	<table id="log_table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Ctrl</th>
+              <th>Type</th>
+              <th>Desc.</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+	</table>
+      </div>
+    </div>
+
+    <script>
+      var socket = io.connect(document.location.href);
+      graph = new myGraph("#graph");
+      logTable = $("#log_table").dataTable({
+        "iDisplayLength": 10,
+        "bAutoWidth": false
+      });
+
+      socket.on('rgv init', function (j_array) {
+        for (var i in j_array) {
+          //console.log ('init' + JSON.stringify(j_array[i]));
+          update (j_array[i]);
+        }
+        graph.update();
+      });
+
+      socket.on('rgv update', function (j) {
+        //console.log ('update' + JSON.stringify(j));
+        update (j);
+        graph.update();
+      });
+
+      function update (j) {
+        switch (j.type) {
+          case "node":
+            if (j.cmd == "Add") {
+              graph.removeLinkToTarget (j.name);
+              graph.addNode (j.name);
+            } else if (j.cmd == "Delete") {
+              graph.removeNode (j.name);
+            }
+      
+            logTable.fnAddData([ j.date, j.cmd, "node", j.name ]);
+            break;
+          case "rnode":
+            if (j.cmd == "Add")
+              graph.addNode (j.name);
+
+            logTable.fnAddData([ j.date, j.cmd, "rnode", j.name ]);
+            break;
+          case "link":
+            if (j.cmd == "Add")
+              graph.addLink (j.source, j.target);
+
+            logTable.fnAddData([ j.date, j.cmd, "link", j.source + " => " +  j.target ]);
+            break;
+          default:
+            break;
+          }
+
+        logTable.fnPageChange('last');
+      }
+    </script>
+
+  </body>
+</html>
